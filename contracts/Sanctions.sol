@@ -1,88 +1,43 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.4;
 
+import "@openzeppelin/contracts@4.7.0/token/ERC20/ERC20.sol";
 
-interface IERC20 {
-    function totalSupply() external view returns (uint);
+contract CysToken is ERC20 {
+    address _admin;
+    mapping(address => bool) public _blacklist; 
 
-    function balanceOf(address account) external view returns (uint);
-
-    function transfer(address receipient, uint amount) external returns (bool);
-
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint);
-
-    function approve(address spender, uint amount) external returns (bool);
-
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint amount
-    ) external returns (bool);
-
-    event Transfer(address indexed from, address indexed to, uint amount);
-
-    event Approval(address indexed owner, address indexed spender, uint amount);
-}
-
-contract Sanctions is IERC20 {
-    uint public totalSupply;
-    mapping(address => uint) public balanceOf;
-    mapping(address => mapping(address => uint)) public allowance;
-    mapping(address => bool) private _blacklist;
-
-    string public name = "Test";
-    string public symbol = "TEST";
-    uint8 public decimals = 18; // how many zeros are used to represent one token
-    address private specialAddress = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
-
-    function transfer(address recipient, uint amount) external returns (bool){
-        require(! _blacklist[msg.sender] && ! _blacklist[recipient], "You or the address you are sending to are or is blacklisted");
-        balanceOf[msg.sender] -= amount;
-        balanceOf[recipient] += amount;
-        emit Transfer(msg.sender, recipient, amount);
-        return true;
+    modifier onlyAdmin {
+      require(msg.sender == _admin, "CysToken: Not authorized to call this function.");
+      _;
     }
 
-
-
-    function approve(address spender, uint amount) external returns (bool){
-        allowance[msg.sender][spender] = amount;
-        emit Approval(msg.sender,spender,amount);
-        return true;
+    constructor() ERC20("CysToken", "CYT") {
+        _mint(msg.sender, 100000 * 10 ** decimals());
+        _admin = msg.sender;
     }
 
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint amount
-    ) external returns (bool){
-        allowance[sender][msg.sender] -= amount;
-        balanceOf[sender] -= amount;
-        balanceOf[recipient] += amount;
-        emit Transfer(sender, recipient, amount);
-        return true;
+    function _beforeTokenTransfer(address from, address to, uint256 amount)
+        internal virtual override
+    {
+        super._beforeTokenTransfer(from, to, amount);
+
+        require(! _blacklist[msg.sender] && ! _blacklist[to], "CysToken: You or the address you are sending to are or is blacklisted");
     }
+
 
     function addToBlackList(
         address toBeBlacklisted
-    ) external returns (bool){
-        require(msg.sender == specialAddress, "Not authorized address");
+    ) external onlyAdmin returns (bool){
         _blacklist[toBeBlacklisted] = true;
         return true;
     }
 
     function removeFromBlackList(
         address toBeBlacklisted
-    ) external returns (bool){
-        require(msg.sender == specialAddress, "Not authorized address");
+    ) external onlyAdmin returns (bool){
         _blacklist[toBeBlacklisted] = false;
         return true;
     }
-
-
-
 
 }
